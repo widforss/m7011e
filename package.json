@@ -1,0 +1,20 @@
+{
+  "name": "webdyn",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "dependencies": {
+    "@turf/centroid": "^6.0.2",
+    "cors": "^2.8.5",
+    "express": "^4.17.1",
+    "geojson-validation": "^0.2.1",
+    "node-libcurl": "^2.0.2",
+    "pg": "^7.12.1",
+    "request": "^2.88.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
