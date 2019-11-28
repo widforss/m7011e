@@ -7,6 +7,7 @@ DECLARE
     activeCodes_ INT;
     activeAll_   INT;
     activeDay_   INT;
+    newCodes_    INT;
     oldCode_     interface.AccountCode%ROWTYPE;
     account_     interface.Account%ROWTYPE;
 BEGIN
@@ -37,11 +38,17 @@ BEGIN
     FROM interface.AccountCode
     WHERE AccountCode.creationDate + INTERVAL '1' DAY > NOW();
 
+    SELECT COUNT(*)
+    INTO newCodes_
+    FROM interface.AccountCode
+    WHERE getAccountCode.email = AccountCode.email
+      AND AccountCode.deprecateDate > NOW();
+
     IF activeCodes_ >= 15 OR activeAll_ >= 150 OR activeDay_ >= 300 THEN
         RETURN NULL;
     END IF;
 
-    IF account_._id IS NOT NULL AND NOT account_.active THEN
+    IF (account_._id IS NULL AND totalCodes_ > 2) OR newCodes_ > 0 THEN
         RETURN NULL;
     END IF;
 

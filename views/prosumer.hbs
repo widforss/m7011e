@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta name="viewport" content="initial-scale=1.0">
+  <meta charset="utf-8">
+  <title>Prosumer portal</title>
+</head>
+
+<body id="body">
+  <h1>Prosumer portal</h1>
+  <div><a href="/logout">Log out</a></div>
+  <div>
+    <p>
+      Current wind velocity (at <input type="number" id="coord_n" value="7295937"> mN, <input type="number" id="coord_e" value="828018"> mE in SWEREF99 TM):<br>
+      <span id="wind-span"></span> m/s
+    </p>
+    <p>
+      Current electricity consumption in Norrbotten:<br>
+      <span id="consumption-span"></span> MW
+    </p>
+    <p>
+      Current electricity price:<br>
+      <span id="price-span"></span> kr/kW
+    </p>
+  </div>
+  <noscript>
+    <div class="jsWarning">
+      This application requires a browser with JavaScript.
+    </div>
+  </noscript>
+  <script type="text/javascript">
+    function updateWind() {
+      let windSpan = document.getElementById('wind-span');
+      let x = document.getElementById('coord_e').value;
+      let y = document.getElementById('coord_n').value;
+
+      let windReq = new XMLHttpRequest();
+      windReq.onload = () => {
+        if (windReq.status == 200) {
+          let wind = JSON.parse(windReq.response);
+          if (wind.velocity) {
+            windSpan.innerHTML = wind.velocity.toFixed(1);
+          } else {
+            windSpan.innerHTML = '';
+          }
+        }
+      };
+      windReq.onerror = () => windSpan.innerHTML = '';
+      windReq.open("GET", "/api/wind/" + x + "/" + y);
+      windReq.send();
+      setTimeout(updateWind, 1000);
+    }
+
+    function updateConsumption() {
+      let consumptionSpan = document.getElementById('consumption-span');
+
+      let consumptionReq = new XMLHttpRequest();
+      consumptionReq.onload = () => {
+        if (consumptionReq.status == 200) {
+          let consumption = JSON.parse(consumptionReq.response);
+          consumptionSpan.innerHTML = consumption.consumption.toFixed(1);
+        }
+      };
+      consumptionReq.open("GET", "/api/consumption");
+      consumptionReq.send();
+      setTimeout(updateConsumption, 10000);
+    }
+
+    function updatePrice() {
+      let priceSpan = document.getElementById('price-span');
+
+      let priceReq = new XMLHttpRequest();
+      priceReq.onload = () => {
+        if (priceReq.status == 200) {
+          let price = JSON.parse(priceReq.response);
+          priceSpan.innerHTML = price.price.toFixed(2);
+        }
+      };
+      priceReq.open("GET", "/api/price");
+      priceReq.send();
+      setTimeout(updatePrice, 10000);
+    }
+
+    updateWind();
+    updateConsumption();
+    updatePrice();
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta name="viewport" content="initial-scale=1.0">
+  <meta charset="utf-8">
+  <title>Prosumer portal</title>
+</head>
+
+<body id="body">
+  <h1>Prosumer log in</h1>
+  <div id="error-div" style="color: red"></div>
+  <form id="email-form">
+    Email: <br>
+    <input type="text" name="email" id="form-email-field"><br>
+    I accept that my data is used for educational purposes: <br>
+    <input type="checkbox" name="gdpr" id="form-gdpr-field"><br>
+    <input type="button" id="login-button" value="Send authentication code">
+  </form>
+  <form id="code-form" style="display: none">
+    Enter code emailed to you: <br>
+    <input type="text" name="code" id="form-code-field"><br>
+    <input type="button" id="code-button" value="Log in">
+  </form>
+  <noscript>
+    <div class="jsWarning">
+      This application requires a browser with JavaScript.
+    </div>
+  </noscript>
+  <script type="text/javascript">
+    function keyClick(button, event) {
+      if (event.keyCode === 13) {
+        event.preventDefault();
+        button.click();
+        return true;
+      }
+    }
+
+    let emailButton = document.getElementById("login-button");
+    let codeButton = document.getElementById("code-button");
+    let emailInput = document.getElementById('form-email-field');
+    let gdprInput = document.getElementById('form-gdpr-field');
+    let codeInput = document.getElementById('form-code-field');
+    let emailForm = document.getElementById('email-form');
+    let codeForm = document.getElementById('code-form');
+
+    emailForm.onkeypress = (event) => keyClick(emailButton, event);
+    codeForm.onkeypress = (event) => keyClick(codeButton, event);
+
+    emailButton.addEventListener("click", () => {
+      function emailSent() {
+        if (this.status != 200 && this.status != 429) {
+          emailFailed();
+          return;
+        }
+        document.getElementById('error-div').innerHTML = '';
+        emailForm.style.display = 'none';
+        codeForm.style.display = 'block';
+      }
+      function emailFailed() {
+        document.getElementById('error-div').innerHTML =
+          'Could not send email to this address.';
+      }
+
+      let email = emailInput.value;
+      let gdpr = gdprInput.checked;
+
+      if (gdpr != true) {
+        document.getElementById('error-div').innerHTML =
+          'You have to allow your data to be stored.';
+        return;
+      }
+
+      let emailReq = new XMLHttpRequest();
+      emailReq.onload = emailSent;
+      emailReq.onerror = emailFailed;
+      emailReq.open("GET", "/auth/login?gdpr=" + gdpr + '&email=' + email);
+      emailReq.send();
+    })
+
+    document.getElementById('code-button').addEventListener("click", () => {
+      function codeSent() {
+        if (this.status != 200) {
+          codeFailed();
+          return;
+        }
+        document.getElementById('error-div').innerHTML = '';
+        document.location.href = '/prosumer';
+      }
+      function codeFailed() {
+        document.getElementById('error-div').innerHTML =
+          'Incorrect code.';
+      }
+
+      let email = emailInput.value;
+      let code = codeInput.value;
+      let codeReq = new XMLHttpRequest();
+      codeReq.onload = codeSent;
+      codeReq.onerror = codeFailed;
+      codeReq.open("GET", "/auth/code?code=" + code + '&email=' + email);
+      codeReq.send();
+    })
+  </script>
+</body>
+
+</html>

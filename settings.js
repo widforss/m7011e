@@ -13,12 +13,13 @@ module.exports = {
   mail: {
     sender: 'webdyn@fastmail.com',
     username: 'webdyn@fastmail.com',
-    password: replacePassword,
+    password: 'jw9xysaeac49w6zn',
     url: 'smtps://smtp.fastmail.com:465',
     length: 6,
     domains: [
       "student.ltu.se",
       "ltu.se",
+      "antarkt.is",
     ],
     emails: [],
   },

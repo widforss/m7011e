@@ -15,7 +15,7 @@ const app = express();
 router(app, sql, mail, windModel, consumption);
 
 app.listen(settings.port, () => {
-    let now = (new Date()).toISOString();
-    let string = `${now}\tExpress: ${settings.port}\tAPI web server started.`;
-    console.log(string);
+  let now = (new Date()).toISOString();
+  let string = `${now}\tExpress: ${settings.port}\tAPI web server started.`;
+  console.log(string);
 })

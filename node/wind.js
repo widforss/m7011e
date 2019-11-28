@@ -271,8 +271,8 @@ class WindModel {
 
         that.levels.forEach((level) => level.step());
 
-        that.overview.print();
-        process.stdout.write("\n");
+        //that.overview.print();
+        //process.stdout.write("\n");
     }
 }
 
