@@ -70,7 +70,7 @@ CREATE TABLE account.Code
     _id        UUID         NOT NULL DEFAULT uuid.uuid_generate_v4(),
     _id_public UUID         NOT NULL DEFAULT uuid.uuid_generate_v4(),
     code       TEXT         NOT NULL DEFAULT LPAD(
-            floor(random() * power(10, 6))::TEXT, 6, ' '),
+            floor(random() * power(10, 6))::TEXT, 6, '0'),
     email      VARCHAR(255) NOT NULL,
 
     logDate    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
