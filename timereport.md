@@ -9,3 +9,4 @@
 | 2019-11-21  | 2       | Modelling wind simulation |
 | 2019-11-21  | 2       | Setting up web API |
 | 2019-11-21  | 1       | Copying mail auth from other personal project |
+| 2019-11-26  | 4       | Creating routes and writing basic web client |
