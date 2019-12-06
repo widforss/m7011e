@@ -147,8 +147,11 @@ BEGIN
         VALUES RETURNING _id INTO account_iface_._id;
     END IF;
 
-    INSERT INTO Account.properties (_accountid, email, active, gdpr)
+    INSERT INTO Account.Properties (_accountid, email, active, gdpr)
     VALUES (account_iface_._id, assertAccount.email, TRUE, TRUE);
+
+    INSERT INTO Account.Settings (_accountId) VALUES (account_iface_._id);
+    INSERT INTO Account.Data (_accountId) VALUES (account_iface_._id);
 
     RETURN TRUE;
 END ;
@@ -229,5 +232,139 @@ BEGIN
 
     RETURN TRUE;
 END ;
+$$ language plpgsql VOLATILE
+                    SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.setSettings(session UUID, settings JSONB)
+    RETURNS SETOF public.Account_t
+AS
+$$
+DECLARE
+    session_iface_ interface.AccountSession%ROWTYPE;
+    geom_          postgis.geometry(Point, 3006);
+    coordinates_   REAL[2];
+BEGIN
+    SELECT *
+    INTO session_iface_
+    FROM interface.AccountSession
+    WHERE setSettings.session = AccountSession._id_public
+      AND AccountSession.active
+    LIMIT 1;
+
+    IF session_iface_._id IS NULL THEN
+        RAISE EXCEPTION 'Invalid session token!';
+    END IF;
+
+    SELECT ARRAY [ settings -> 'coordinates' -> 0,
+               settings -> 'coordinates' -> 1] AS coordinates
+    INTO coordinates_;
+    SELECT postgis.ST_SetSRID(postgis.ST_Point(coordinates_[1],
+                                               coordinates_[2]), 3006)
+    INTO geom_;
+
+    INSERT INTO account.Settings (_accountId, geom)
+    VALUES (session_iface_._accountId, geom_);
+
+    RETURN QUERY
+        SELECT _id_public,
+               creationDate,
+               email,
+               active,
+               gdpr,
+               coordinates
+        FROM interface.Account
+        WHERE _id = session_iface_._accountId;
+END ;
+$$ language plpgsql VOLATILE
+                    SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.getAccount(session UUID)
+    RETURNS SETOF public.Account_t
+AS
+$$
+DECLARE
+    session_iface_ interface.AccountSession%ROWTYPE;
+BEGIN
+    SELECT *
+    INTO session_iface_
+    FROM interface.AccountSession
+    WHERE getAccount.session = AccountSession._id_public
+      AND AccountSession.active
+    LIMIT 1;
+
+    IF session_iface_._id IS NULL THEN
+        RAISE EXCEPTION 'Invalid session token!';
+    END IF;
+
+    RETURN QUERY
+        SELECT _id_public,
+               creationDate,
+               email,
+               active,
+               gdpr,
+               coordinates
+        FROM interface.Account
+        WHERE _id = session_iface_._accountId;
+END
+$$ language plpgsql VOLATILE
+                    SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.updateAccountData(data JSONB)
+    RETURNS void
+AS
+$$
+DECLARE
+    data_    public.AccountData_t;
+    account_ interface.account%ROWTYPE;
+BEGIN
+    FOR data_ IN
+        SELECT value ->> '_id_public' AS _id_public,
+               value -> 'consumption' AS consumption,
+               value -> 'production'  AS production
+        FROM jsonb_array_elements(data)
+        LOOP
+            SELECT *
+            INTO account_
+            FROM interface.Account
+            WHERE data_._id_public = Account._id_public
+            LIMIT 1;
+
+            IF account_._id IS NULL THEN
+                RAISE EXCEPTION 'Invalid account ID!';
+            END IF;
+
+            INSERT INTO Account.Data (_accountid, consumption, production)
+            VALUES (account_._id, data_.consumption, data_.production);
+        END LOOP;
+    RETURN;
+END
+$$ language plpgsql VOLATILE
+                    SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.getAccountData(session UUID)
+    RETURNS SETOF public.AccountData_t
+AS
+$$
+DECLARE
+    session_iface_ interface.AccountSession%ROWTYPE;
+BEGIN
+    SELECT *
+    INTO session_iface_
+    FROM interface.AccountSession
+    WHERE getAccountData.session = AccountSession._id_public
+      AND AccountSession.active
+    LIMIT 1;
+
+    IF session_iface_._id IS NULL THEN
+        RAISE EXCEPTION 'Invalid session token!';
+    END IF;
+
+    RETURN QUERY
+        SELECT _id_public,
+               consumption,
+               production
+        FROM interface.Account
+        WHERE _id = session_iface_._accountId;
+END
 $$ language plpgsql VOLATILE
                     SECURITY DEFINER;

@@ -3,24 +3,35 @@ SELECT DISTINCT ON
     (Account._id) Account._id,
                   Account._id_public,
                   Properties.email,
-                  Account.logDate    AS creationDate,
-                  Properties.logDate AS lastEditDate,
+                  ARRAY [ postgis.ST_X(Settings.geom),
+                      postgis.ST_Y(Settings.geom)]::INT[2] AS coordinates,
+                  Account.logDate                          AS creationDate,
                   Properties.active,
-                  Properties.gdpr
+                  Properties.gdpr,
+                  Data.consumption,
+                  Data.production,
+                  Data.logDate                             AS dataDate
 FROM account.Account
          INNER JOIN account.Properties
                     ON Account._id = Properties._accountId
+         INNER JOIN account.Settings
+                    ON Account._id = Settings._accountId
+         INNER JOIN account.Data
+                    ON Account._id = Data._accountId
 ORDER BY Account._id,
-         Properties.logDate DESC;
+         Properties.logDate DESC,
+         Settings.logDate DESC,
+         Data.logDate DESC;
 
 CREATE OR REPLACE VIEW interface.AccountSession AS
 SELECT DISTINCT ON (Session._id_public) Session._id,
-                Session._id_public,
-                Session._accountId,
-                SessionProperties.active AND Account.active AND
-                Account.gdpr              AS active,
-                Session.logdate           AS creationDate,
-                SessionProperties.logdate AS lastEditDate
+                                        Session._id_public,
+                                        Session._accountId,
+                                        SessionProperties.active AND
+                                        Account.active AND
+                                        Account.gdpr              AS active,
+                                        Session.logdate           AS creationDate,
+                                        SessionProperties.logdate AS lastEditDate
 FROM Account.Session
          INNER JOIN Account.SessionProperties
                     ON Session._id = SessionProperties._sessionId

@@ -35,10 +35,34 @@ class Sql {
     this.query_(query, [token], callback);
   }
 
-
   revokeAccountSession(uuid, callback) {
     let query = `SELECT RevokeAccountSession($1) AS status`;
     this.query_(query, [uuid], callback);
+  }
+  
+  setSettings(token, body, callback) {
+    let query = `SELECT * FROM setSettings($1, $2);`;
+    this.query_(query, [token, body], callback);
+  }
+  
+  getAccount(token, callback) {
+    let query = `SELECT * FROM getAccount($1);`;
+    this.query_(query, [token], callback);
+  }
+  
+  selectAccount(callback) {
+    let query = `SELECT * FROM Account;`;
+    this.query_(query, [], callback);
+  }
+  
+  updateAccountData(data, callback) {
+    let query = `SELECT * FROM updateAccountData($1);`;
+    this.query_(query, [data], callback);
+  }
+
+  getAccountData(token, callback) {
+    let query = `SELECT * FROM getAccountData($1);`;
+    this.query_(query, [token], callback);
   }
   
   query_(query, args, callback) {

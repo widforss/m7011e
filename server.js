@@ -19,3 +19,36 @@ app.listen(settings.port, () => {
   let string = `${now}\tExpress: ${settings.port}\tAPI web server started.`;
   console.log(string);
 })
+
+dataCounter = 0;
+function refreshUserData() {
+  sql.selectAccount((err, res) => {
+    if (err) {
+      console.error(err);
+      return;
+    }
+    
+    let accounts = res.rows.map((account) => {
+      [x, y] = account.coordinates;
+      if (dataCounter % 10 == 0) {
+        account.consumption = consumption.get_local();
+      }
+      account.production = windModel.production(x, y);
+      return {
+        _id_public: account._id_public,
+        consumption: account.consumption,
+        production: account.production,
+      }
+    });
+
+    sql.updateAccountData(JSON.stringify(accounts), (err) => {
+      dataCounter++;
+      setTimeout(refreshUserData, 1000);
+      if (err) {
+        console.error(err);
+        return;
+      }
+    });
+  });
+}
+refreshUserData();

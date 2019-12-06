@@ -1,7 +1,8 @@
 const cors = require('cors');
 const express = require('express');
 const handlebars = require('express-handlebars');
-var cookieParser = require('cookie-parser');
+const cookieParser = require('cookie-parser');
+const bodyParser = require("body-parser");
 
 const emailChar = /^[0-9a-zA-Z!#$%&'\*+\-/=?^_`{|}~."(),:;<>@[\\\]]*$/;
 const atStruct = /^.+@.+$/;
@@ -13,6 +14,8 @@ function router(app, sql, mail, wind, consumption) {
     .set('view engine', '.hbs')
     .use('/static', express.static('static'))
     .use(cookieParser());
+
+  app.use(bodyParser.json())
 
   app.use('/prosumer', function (req, res, next) {
     authenticate(req, res, sql, (isAuthenticated) => {
@@ -66,36 +69,69 @@ function router(app, sql, mail, wind, consumption) {
     });
   });
 
-  app.get('/api/wind/:x/:y', (req, res) => {
-    let x = parseInt(req.params.x, 10);
-    if (isNaN(x)) {
-      res.sendStatus(400);
-      return;
-    }
+  app.get('/api/account', (req, res) => {
+    let token = req.cookies.token;
 
-    let y = parseInt(req.params.y, 10);
-    if (isNaN(x)) {
-      res.sendStatus(400);
-      return;
-    }
+    sql.getAccount(token, (err, sqlres) => {
+      if (err || !sqlres.rowCount) {
+        res.sendStatus(500);
+        return;
+      }
 
-    let response;
-    try {
-      response = { velocity: wind.get(x, y) };
-    } catch (e) {
-      res.sendStatus(404);
-    }
-
-    res.send(response);
+      res.send(sqlres.rows[0]);
+    });
   });
 
-  app.get('/api/consumption', (req, res) => {
-    res.send({ consumption: consumption.get() });
+  app.post('/api/settings', (req, res) => {
+    let token = req.cookies.token;
+
+    sql.setSettings(token, req.body, (err, sqlres) => {
+      if (err || !sqlres.rowCount) {
+        res.sendStatus(500);
+        return;
+      }
+
+      res.send(sqlres.rows[0]);
+    });
+  });
+
+  app.get('/api/wind', (req, res) => {
+    let token = req.cookies.token;
+
+    sql.getAccount(token, (err, sqlres) => {
+      if (err || !sqlres.rowCount || !sqlres.rows[0].coordinates) {
+        res.sendStatus(500);
+        return;
+      }
+
+      [x, y] = sqlres.rows[0].coordinates;
+      let response;
+      try {
+        response = { velocity: wind.get(x, y) };
+      } catch (e) {
+        res.sendStatus(404);
+      }
+
+      res.send(response);
+    });
+  });
+
+  app.get('/api/data', (req, res) => {
+    let token = req.cookies.token;
+    sql.getAccountData(token, (err, sqlres) => {
+      if (err || !sqlres.rowCount) {
+
+        res.sendStatus(500);
+        return;
+      }
+
+      res.send(sqlres.rows[0]);
+    });
   });
 
   app.get('/api/price', (req, res) => {
     let price =
-      1 + 0.5 * (consumption.get() / consumption.typ) / (wind.avg() / wind.typ);
+      1.3 + 0.1 * (consumption.get() / consumption.typ) / (wind.avg() / wind.typ);
     res.send({ price });
   });
 

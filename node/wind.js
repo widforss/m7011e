@@ -7,6 +7,7 @@ const WIND_TYP = 5;
 const WIND_MAX = 35;
 
 const CONSUMPTION_TYP = 900;
+const CONSUMPTION_LOCAL = 0.6;
 
 const PRINT_MAX_X = 40;
 const PRINT_MAX_Y = 50;
@@ -28,6 +29,10 @@ class Consumption {
 
     get() {
         return rayleigh(CONSUMPTION_TYP);
+    }
+
+    get_local() {
+        return rayleigh(CONSUMPTION_LOCAL);
     }
 }
 
@@ -257,6 +262,12 @@ class WindModel {
 
     get(x, y) {
         return this.detailed.interpolate(x, y);
+    }
+
+    production(x, y) {
+        let wind = this.get(x, y);
+        let prod = wind >= 2 ? (wind - 1.5) * 1.2 / 12.5 : 0;
+        return wind > 14 ? 1.2 : prod;
     }
 
     avg() {
