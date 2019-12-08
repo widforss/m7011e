@@ -32,6 +32,16 @@
       Current electricity price:<br>
       <span id="price-span"></span> kr/kW
     </p>
+    <p>
+      Buffer:<br>
+      <span id="buffer-span"></span> kWh / 70 kWh
+    </p>
+    <p}>
+      Produced electricity used to load buffer while overproducing:<br>
+      <input type="number" id="toBuffer" value="1" oninput="delaySettings();"> %<br>
+      Consumed electricity taken from buffer while underproducing:<br>
+      <input type="number" id="fromBuffer" value="0" oninput="delaySettings();"> %<br>
+    </p>
   </div>
   <noscript>
     <div class="jsWarning">
@@ -55,7 +65,6 @@
       accountReq.send();
     }
 
-    let posDelay;
     function setPos() {
       let x = document.getElementById('coord_e');
       let y = document.getElementById('coord_n');
@@ -64,17 +73,32 @@
       y.value = account.coordinates[1];
     }
 
+    function setQuotas() {
+      let fromBuffer = document.getElementById('fromBuffer');
+      let toBuffer = document.getElementById('toBuffer');
+
+      fromBuffer.value = account.frombuffer * 100;
+      toBuffer.value = account.tobuffer * 100;
+    }
+
     let settingsTimeout;
     function pushSettings() {
       let x = parseInt(document.getElementById('coord_e').value, 10);
       let y = parseInt(document.getElementById('coord_n').value, 10);
-      if (!isNaN(x) && !isNaN(y)) {
+      let fromBuffer = parseInt(document.getElementById('fromBuffer').value, 10);
+      let toBuffer = parseInt(document.getElementById('toBuffer').value, 10);
+      if (!isNaN(x) && !isNaN(y) && !isNaN(fromBuffer) && !isNaN(toBuffer)) {
         let settings = {
           coordinates: [x, y],
+          fromBuffer: fromBuffer / 100,
+          toBuffer: toBuffer / 100,
         };
 
         let settingsReq = new XMLHttpRequest();
-        settingsReq.onload = () => getAccount(() => setPos());
+        settingsReq.onload = () => getAccount(() => {
+          setPos();
+          setQuotas();
+        });
         settingsReq.open("POST", "/api/settings");
         settingsReq.setRequestHeader("Content-Type", "application/json");
         settingsReq.send(JSON.stringify(settings));
@@ -84,7 +108,6 @@
     }
     function delaySettings() {
       clearTimeout(settingsTimeout);
-      posDelay = true;
       settingsTimeout = setTimeout(pushSettings, 1000);
     }
 
@@ -106,6 +129,7 @@
     function updateData() {
       let prodSpan = document.getElementById('prod-span');
       let consumptionSpan = document.getElementById('consumption-span');
+      let bufferSpan = document.getElementById('buffer-span');
 
       let dataReq = new XMLHttpRequest();
       dataReq.onload = () => {
@@ -113,6 +137,7 @@
           let data = JSON.parse(dataReq.response);
           prodSpan.innerHTML = data.production.toFixed(3);
           consumptionSpan.innerHTML = data.consumption.toFixed(3);
+          bufferSpan.innerHTML = data.buffer.toFixed(3);
         }
       };
       dataReq.open("GET", "/api/data");
@@ -137,6 +162,7 @@
 
     getAccount(() => {
       setPos();
+      setQuotas();
       updateWind();
       updateData();
       updatePrice();

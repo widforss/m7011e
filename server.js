@@ -34,10 +34,19 @@ function refreshUserData() {
         account.consumption = consumption.get_local();
       }
       account.production = windModel.production(x, y);
+
+      let netProd = account.production - account.consumption;
+      if (netProd >= 0) {
+        account.buffer += netProd * account.tobuffer / 10;
+      } else {
+        account.buffer += netProd * account.frombuffer / 10;
+      }
+
       return {
         _id_public: account._id_public,
         consumption: account.consumption,
         production: account.production,
+        buffer: account.buffer,
       }
     });
 

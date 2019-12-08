@@ -10,7 +10,10 @@ SELECT DISTINCT ON
                   Properties.gdpr,
                   Data.consumption,
                   Data.production,
-                  Data.logDate                             AS dataDate
+                  Data.buffer,
+                  Data.logDate                             AS dataDate,
+                  Settings.toBuffer,
+                  Settings.fromBuffer
 FROM account.Account
          INNER JOIN account.Properties
                     ON Account._id = Properties._accountId

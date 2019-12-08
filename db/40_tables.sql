@@ -45,6 +45,8 @@ CREATE TABLE account.Settings
                     828018,
                     7295937
                 ), 3006),
+    toBuffer   REAL                          NOT NULL DEFAULT 1,
+    fromBuffer REAL                          NOT NULL DEFAULT 0,
 
     logDate    TIMESTAMPTZ                   NOT NULL DEFAULT NOW(),
 
@@ -52,7 +54,9 @@ CREATE TABLE account.Settings
     FOREIGN KEY (_accountId) REFERENCES account.Account (_id),
     UNIQUE (_id_public),
     CHECK (512758 < postgis.ST_X(geom) AND postgis.ST_X(geom) < 864415),
-    CHECK (7213073 < postgis.ST_Y(geom) AND postgis.ST_Y(geom) < 7689477)
+    CHECK (7213073 < postgis.ST_Y(geom) AND postgis.ST_Y(geom) < 7689477),
+    CHECK (0 <= toBuffer AND toBuffer <= 1),
+    CHECK (0 <= fromBuffer AND fromBuffer <= 1)
 );
 CREATE INDEX ON account.Settings (_accountId);
 CREATE INDEX ON account.Settings (logDate);
@@ -65,13 +69,15 @@ CREATE TABLE account.Data
     _accountId  UUID        NOT NULL,
     consumption REAL        NOT NULL DEFAULT 0,
     production  REAL        NOT NULL DEFAULT 0,
+    buffer      REAL        NOT NULL DEFAULT 0,
 
     logDate     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     PRIMARY KEY (_id),
     FOREIGN KEY (_accountId) REFERENCES account.Account (_id),
     UNIQUE (_id_public),
-    CHECK (consumption >= 0 AND production >= 0)
+    CHECK (consumption >= 0 AND production >= 0),
+    CHECK (0 <= buffer AND buffer <= 70)
 );
 CREATE INDEX ON account.Properties (_accountId);
 CREATE INDEX ON account.Properties (logDate);

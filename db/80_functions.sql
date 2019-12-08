@@ -243,6 +243,8 @@ DECLARE
     session_iface_ interface.AccountSession%ROWTYPE;
     geom_          postgis.geometry(Point, 3006);
     coordinates_   REAL[2];
+    fromBuffer_    REAL;
+    toBuffer_      REAL;
 BEGIN
     SELECT *
     INTO session_iface_
@@ -262,13 +264,19 @@ BEGIN
                                                coordinates_[2]), 3006)
     INTO geom_;
 
-    INSERT INTO account.Settings (_accountId, geom)
-    VALUES (session_iface_._accountId, geom_);
+    SELECT settings -> 'fromBuffer',
+           settings -> 'toBuffer'
+    INTO fromBuffer_, toBuffer_;
+
+    INSERT INTO account.Settings (_accountId, geom, toBuffer, fromBuffer)
+    VALUES (session_iface_._accountId, geom_, toBuffer_, fromBuffer_);
 
     RETURN QUERY
         SELECT _id_public,
                creationDate,
                email,
+               fromBuffer,
+               toBuffer,
                active,
                gdpr,
                coordinates
@@ -300,6 +308,8 @@ BEGIN
         SELECT _id_public,
                creationDate,
                email,
+               fromBuffer,
+               toBuffer,
                active,
                gdpr,
                coordinates
@@ -320,7 +330,8 @@ BEGIN
     FOR data_ IN
         SELECT value ->> '_id_public' AS _id_public,
                value -> 'consumption' AS consumption,
-               value -> 'production'  AS production
+               value -> 'production'  AS production,
+               value -> 'buffer'      AS buffer
         FROM jsonb_array_elements(data)
         LOOP
             SELECT *
@@ -333,8 +344,15 @@ BEGIN
                 RAISE EXCEPTION 'Invalid account ID!';
             END IF;
 
-            INSERT INTO Account.Data (_accountid, consumption, production)
-            VALUES (account_._id, data_.consumption, data_.production);
+            IF data_.buffer > 70 THEN
+                SELECT 70 INTO data_.buffer;
+            ELSE IF data_.buffer < 0 THEN
+                SELECT 0 INTO data_.buffer;
+            END IF;
+            END IF;
+
+            INSERT INTO Account.Data (_accountid, consumption, production, buffer)
+            VALUES (account_._id, data_.consumption, data_.production, data_.buffer);
         END LOOP;
     RETURN;
 END
@@ -362,7 +380,8 @@ BEGIN
     RETURN QUERY
         SELECT _id_public,
                consumption,
-               production
+               production,
+               buffer
         FROM interface.Account
         WHERE _id = session_iface_._accountId;
 END

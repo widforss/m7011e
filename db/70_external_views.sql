@@ -1,8 +1,11 @@
 CREATE OR REPLACE VIEW public.Account AS
 SELECT _id_public,
        coordinates,
+       toBuffer,
+       fromBuffer,
        consumption,
        production,
+       buffer,
        dataDate
 FROM interface.Account
 WHERE Account.active
