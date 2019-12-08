@@ -13,3 +13,4 @@
 | 2019-11-26  | 4       | Creating routes and writing basic web client |
 | 2019-11-28  | 1       | Meeting |
 | 2019-12-06  | 7       | Working on web client and database model |
+| 2019-12-06  | 2       | Energy buffer in prosumer portal |
