@@ -1,8 +1,12 @@
+const os = require("os");
 const cors = require('cors');
 const express = require('express');
 const handlebars = require('express-handlebars');
 const cookieParser = require('cookie-parser');
 const bodyParser = require("body-parser");
+const formData = require("express-form-data");
+const fs = require('fs');
+const gm = require('gm');
 
 const emailChar = /^[0-9a-zA-Z!#$%&'\*+\-/=?^_`{|}~."(),:;<>@[\\\]]*$/;
 const atStruct = /^.+@.+$/;
@@ -15,7 +19,16 @@ function router(app, sql, mail, wind, consumption) {
     .use('/static', express.static('static'))
     .use(cookieParser());
 
-  app.use(bodyParser.json())
+  app.use(bodyParser.json());
+
+  const options = {
+    uploadDir: os.tmpdir(),
+    autoClean: true
+  };
+  app.use(formData.parse(options));
+  app.use(formData.format());
+  app.use(formData.stream());
+  app.use(formData.union());
 
   app.use('/prosumer', function (req, res, next) {
     authenticate(req, res, sql, (isAuthenticated) => {
@@ -74,6 +87,7 @@ function router(app, sql, mail, wind, consumption) {
 
     sql.getAccount(token, (err, sqlres) => {
       if (err || !sqlres.rowCount) {
+        console.log(err, sqlres)
         res.sendStatus(500);
         return;
       }
@@ -93,6 +107,54 @@ function router(app, sql, mail, wind, consumption) {
 
       res.send(sqlres.rows[0]);
     });
+  });
+
+  app.get('/api/avatar/:id', (req, res) => {
+    let token = req.cookies.token;
+
+    sql.selectAccountAvatar(token, req.params.id, (err, sqlres) => {
+      if (err || !sqlres.rowCount) {
+        res.sendStatus(500);
+        return;
+      }
+
+      res.type(sqlres.rows[0].format.toLowerCase());
+      res.send(sqlres.rows[0].image);
+    })
+  });
+
+  app.post('/api/avatar', (req, res) => {
+    let token = req.cookies.token;
+
+    if (!req.files['avatar']) {
+      res.sendStatus(400);
+      return;
+    }
+
+    gm(req.files['avatar'])
+    .format({bufferStream: true}, function(err, format) {
+      if (err || (format !== "JPEG" && format !== "PNG")) {
+        res.sendStatus(400);
+        return;
+      }
+
+      this.resize(640, 480)
+      .toBuffer(format, function (err, buffer) {
+        if (err) {
+          res.sendStatus(500);
+          return;
+        }
+
+        data = '\\x' + buffer.toString('hex');
+        sql.upsertAccountAvatar(token, format, data, (err) => {
+          if (err) {
+            res.sendStatus(500);
+            return;
+          }
+          res.sendStatus(200);
+        });
+      })
+    })
   });
 
   app.get('/api/wind', (req, res) => {

@@ -82,6 +82,24 @@ CREATE TABLE account.Data
 CREATE INDEX ON account.Properties (_accountId);
 CREATE INDEX ON account.Properties (logDate);
 
+CREATE TABLE account.Avatar
+(
+    _id        UUID         NOT NULL DEFAULT uuid.uuid_generate_v4(),
+    _id_public UUID         NOT NULL DEFAULT uuid.uuid_generate_v4(),
+    _accountId UUID         NOT NULL,
+    image      BYTEA        NOT NULL,
+    format     VARCHAR(255) NOT NULL,
+
+    logDate    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+
+    PRIMARY KEY (_id),
+    FOREIGN KEY (_accountId) REFERENCES account.Account (_id),
+    UNIQUE (_id_public),
+    CHECK (format LIKE 'JPEG' OR format LIKE 'PNG')
+);
+CREATE INDEX ON account.Avatar (_accountId);
+CREATE INDEX ON account.Avatar (logDate);
+
 CREATE TABLE account.Session
 (
     _id        UUID        NOT NULL DEFAULT uuid.uuid_generate_v4(),

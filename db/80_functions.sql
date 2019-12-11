@@ -279,7 +279,8 @@ BEGIN
                toBuffer,
                active,
                gdpr,
-               coordinates
+               coordinates,
+               avatarUrl
         FROM interface.Account
         WHERE _id = session_iface_._accountId;
 END ;
@@ -312,7 +313,8 @@ BEGIN
                toBuffer,
                active,
                gdpr,
-               coordinates
+               coordinates,
+               avatarUrl
         FROM interface.Account
         WHERE _id = session_iface_._accountId;
 END
@@ -384,6 +386,64 @@ BEGIN
                buffer
         FROM interface.Account
         WHERE _id = session_iface_._accountId;
+END
+$$ language plpgsql VOLATILE
+                    SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.upsertAccountAvatar(
+    session UUID,
+    format TEXT,
+    image BYTEA
+) RETURNS void
+AS
+$$
+DECLARE
+    session_iface_ interface.AccountSession%ROWTYPE;
+BEGIN
+    SELECT *
+    INTO session_iface_
+    FROM interface.AccountSession
+    WHERE upsertAccountAvatar.session = AccountSession._id_public
+      AND AccountSession.active
+    LIMIT 1;
+
+    IF session_iface_._id IS NULL THEN
+        RAISE EXCEPTION 'Invalid session token!';
+    END IF;
+
+    INSERT INTO account.Avatar (_accountId, image, format)
+    VALUES (session_iface_._accountId, image, format);
+
+    RETURN;
+END
+$$ language plpgsql VOLATILE
+                    SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION public.selectAccountAvatar(
+    session UUID,
+    id UUID
+) RETURNS SETOF public.AccountAvatar_t
+AS
+$$
+DECLARE
+    session_iface_ interface.AccountSession%ROWTYPE;
+BEGIN
+    SELECT *
+    INTO session_iface_
+    FROM interface.AccountSession
+    WHERE selectAccountAvatar.session = AccountSession._id_public
+      AND AccountSession.active
+    LIMIT 1;
+
+    IF session_iface_._id IS NULL THEN
+        RAISE EXCEPTION 'Invalid session token!';
+    END IF;
+
+    RETURN QUERY
+        SELECT image, format
+        FROM account.Avatar
+        WHERE session_iface_._accountId = Avatar._accountId
+        AND id = Avatar._id_public;
 END
 $$ language plpgsql VOLATILE
                     SECURITY DEFINER;

@@ -64,6 +64,16 @@ class Sql {
     let query = `SELECT * FROM getAccountData($1);`;
     this.query_(query, [token], callback);
   }
+
+  upsertAccountAvatar(token, format, data, callback) {
+    let query = `SELECT * FROM upsertAccountAvatar($1, $2, $3);`;
+    this.query_(query, [token, format, data], callback);
+  }
+  
+  selectAccountAvatar(token, id, callback) {
+    let query = `SELECT * FROM selectAccountAvatar($1, $2);`;
+    this.query_(query, [token, id], callback);
+  }
   
   query_(query, args, callback) {
     this.pool.connect((err, client, done) => {

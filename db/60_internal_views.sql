@@ -13,7 +13,8 @@ SELECT DISTINCT ON
                   Data.buffer,
                   Data.logDate                             AS dataDate,
                   Settings.toBuffer,
-                  Settings.fromBuffer
+                  Settings.fromBuffer,
+                  '/api/avatar/' || Avatar._id_public      AS avatarUrl
 FROM account.Account
          INNER JOIN account.Properties
                     ON Account._id = Properties._accountId
@@ -21,10 +22,13 @@ FROM account.Account
                     ON Account._id = Settings._accountId
          INNER JOIN account.Data
                     ON Account._id = Data._accountId
+         LEFT JOIN account.Avatar
+                   ON Account._id = Avatar._accountId
 ORDER BY Account._id,
          Properties.logDate DESC,
          Settings.logDate DESC,
-         Data.logDate DESC;
+         Data.logDate DESC,
+         Avatar.logDate DESC;
 
 CREATE OR REPLACE VIEW interface.AccountSession AS
 SELECT DISTINCT ON (Session._id_public) Session._id,

@@ -37,9 +37,9 @@ function refreshUserData() {
 
       let netProd = account.production - account.consumption;
       if (netProd >= 0) {
-        account.buffer += netProd * account.tobuffer / 10;
+        account.buffer += netProd * account.tobuffer;
       } else {
-        account.buffer += netProd * account.frombuffer / 10;
+        account.buffer += netProd * account.frombuffer;
       }
 
       return {
