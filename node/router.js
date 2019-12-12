@@ -145,8 +145,7 @@ function router(app, sql, mail, wind, consumption) {
           return;
         }
 
-        data = '\\x' + buffer.toString('hex');
-        sql.upsertAccountAvatar(token, format, data, (err) => {
+        sql.upsertAccountAvatar(token, format, buffer, (err) => {
           if (err) {
             res.sendStatus(500);
             return;
