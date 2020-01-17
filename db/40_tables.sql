@@ -146,6 +146,7 @@ CREATE TABLE account.SessionProperties
     logDate    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     PRIMARY KEY (_id),
+    FOREIGN KEY (_sessionId) REFERENCES account.Session (_id),
     UNIQUE (_id_public)
 );
 CREATE INDEX ON account.SessionProperties (logDate);
@@ -209,6 +210,7 @@ CREATE TABLE price.Price
     logDate    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     PRIMARY KEY (_id),
+    FOREIGN KEY (byUser) REFERENCES account.Account (_id),
     UNIQUE (_id_public)
 );
 CREATE INDEX ON price.Price (logDate);
@@ -228,6 +230,7 @@ CREATE TABLE coal.Settings
     logDate    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     PRIMARY KEY (_id),
+    FOREIGN KEY (byUser) REFERENCES account.Account (_id),
     UNIQUE (_id_public),
     CHECK (0 <= produce AND produce <= 5000),
     CHECK (0 <= toBuffer AND toBuffer <= 1),
