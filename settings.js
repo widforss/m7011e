@@ -14,7 +14,7 @@ module.exports = {
   mail: {
     sender: replaceSmtpSender,
     username: replaceSmtpUsername,
-    password: replaceSmtpSender,
+    password: replaceSmtpPassword,
     url: replaceSmtpUrl,
     length: 6,
     domains: [
