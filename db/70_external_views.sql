@@ -41,4 +41,4 @@ SELECT start,
            ELSE 0 END AS production,
        buffer
 FROM interface.Coal
-GRANT SELECT ON public.Price TO PUBLIC;
+GRANT SELECT ON public.Coal TO PUBLIC;
