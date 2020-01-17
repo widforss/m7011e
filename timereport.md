@@ -16,3 +16,6 @@
 | 2019-12-06  | 2       | Energy buffer in prosumer portal |
 | 2019-12-12  | 1       | Meeting |
 | 2019-12-12  | 3       | Finalizing prosumer (excl map) with image upload |
+| 2020-01-09  | 8       | Developing Manager view |
+| 2020-01-10  | 8       | Developing Manager view |
+| 2020-01-17  | 8       | Deploying and writing report |

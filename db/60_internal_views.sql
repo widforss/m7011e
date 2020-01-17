@@ -6,16 +6,25 @@ SELECT DISTINCT ON
                   ARRAY [ postgis.ST_X(Settings.geom),
                       postgis.ST_Y(Settings.geom)]::INT[2] AS coordinates,
                   Account.logDate                          AS creationDate,
+                  Manager.manager,
+                  CASE
+                      WHEN Properties.blocked > NOW()
+                          THEN EXTRACT(EPOCH FROM Properties.blocked - NOW())
+                      ELSE 0
+                      END                                  AS blocked,
                   Properties.active,
                   Properties.gdpr,
                   Data.consumption,
                   Data.production,
                   Data.buffer,
+                  Data.blackout,
                   Data.logDate                             AS dataDate,
                   Settings.toBuffer,
                   Settings.fromBuffer,
                   '/api/avatar/' || Avatar._id_public      AS avatarUrl
 FROM account.Account
+         INNER JOIN account.Manager
+                    ON Account._id = Manager._accountId
          INNER JOIN account.Properties
                     ON Account._id = Properties._accountId
          INNER JOIN account.Settings
@@ -25,6 +34,7 @@ FROM account.Account
          LEFT JOIN account.Avatar
                    ON Account._id = Avatar._accountId
 ORDER BY Account._id,
+         Manager.logDate DESC,
          Properties.logDate DESC,
          Settings.logDate DESC,
          Data.logDate DESC,
@@ -65,3 +75,24 @@ FROM account.Code
 CREATE OR REPLACE VIEW interface.AccountCodeCheck AS
 SELECT *
 FROM account.CodeCheck;
+
+CREATE OR REPLACE VIEW interface.Price AS
+SELECT Price.price,
+       Price.byUser,
+       Price.logDate AS lastEditDate
+FROM price.Price
+ORDER BY logDate DESC
+LIMIT 1;
+
+CREATE OR REPLACE VIEW interface.Coal AS
+SELECT Settings.start,
+       Settings.produce,
+       Settings.toBuffer,
+       Settings.fromBuffer,
+       Data.status,
+       Data.buffer
+FROM coal.Settings
+         LEFT JOIN coal.Data ON TRUE
+ORDER BY Settings.logDate DESC,
+         Data.logDate DESC
+LIMIT 1;

@@ -50,9 +50,24 @@ class Sql {
     this.query_(query, [token], callback);
   }
   
-  selectAccount(callback) {
-    let query = `SELECT * FROM Account;`;
-    this.query_(query, [], callback);
+  selectAccount(callback, optional_email) {
+    if (optional_email) {
+      let query = `SELECT * FROM Account WHERE NOT manager AND email = $1`;
+      this.query_(query, [optional_email], callback);
+    } else {
+      let query = `SELECT * FROM Account WHERE NOT manager;`;
+      this.query_(query, [], callback);
+    }
+  }
+
+  updateAccountProperties({_id_public, email, active}, callback) {
+    let query = `SELECT * FROM updateAccountProperties($1, $2, $3);`;
+    this.query_(query, [_id_public, email, active], callback);
+  }
+
+  blockAccount(id, seconds, callback) {
+    let query = `SELECT * FROM blockAccount($1, $2);`;
+    this.query_(query, [id, seconds], callback);
   }
   
   updateAccountData(data, callback) {
@@ -74,7 +89,47 @@ class Sql {
     let query = `SELECT * FROM selectAccountAvatar($1, $2);`;
     this.query_(query, [token, id], callback);
   }
+
+  setPrice(token, price, callback) {
+    let query = `SELECT * FROM setPrice($1, $2);`;
+    this.query_(query, [token, price], callback);
+  }
   
+  setCoalSettings(token, body, callback) {
+    let query = `SELECT * FROM setCoalSettings($1, $2);`;
+    this.query_(query, [token, body], callback);
+  }
+  
+  getPrice(callback) {
+    let query = `SELECT * FROM price;`;
+    this.query_(query, [], callback);
+  }
+  
+  getDemand(callback) {
+    let query = `SELECT
+        CASE WHEN SUM(consumption) > SUM(production) + SUM(fromBuffer)
+        THEN SUM(consumption) - SUM(production) - SUM(fromBuffer)
+        ELSE 0 END AS demand
+        FROM account
+        WHERE NOT manager;`;
+    this.query_(query, [], callback);
+  }
+
+  selectCoal(callback) {
+    let query = `SELECT * FROM Coal;`;
+    this.query_(query, [], callback);
+  }
+
+  setCoalSettings(token, data, callback) {
+    let query = `SELECT * FROM setCoalSettings($1, $2);`;
+    this.query_(query, [token, data], callback);
+  }
+  
+  updateCoalData(data, callback) {
+    let query = `SELECT * FROM updateCoalData($1);`;
+    this.query_(query, [data], callback);
+  }
+
   query_(query, args, callback) {
     this.pool.connect((err, client, done) => {
       if (err) {

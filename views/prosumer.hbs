@@ -47,7 +47,7 @@
       Buffer:<br>
       <span id="buffer-span"></span> kWh / 70 kWh
     </p>
-    <p}>
+    <p>
       Produced electricity used to load buffer while overproducing:<br>
       <input type="number" id="toBuffer" value="1" oninput="delaySettings();"> %<br>
       Consumed electricity taken from buffer while underproducing:<br>
@@ -69,11 +69,11 @@
           if (callback) {
             callback();
           }
-          setTimeout(getAccount, 5000);
         }
       }
       accountReq.open("GET", "/api/account");
       accountReq.send();
+      setTimeout(getAccount, 5000);
     }
 
     function setPos() {
@@ -167,6 +167,8 @@
         if (priceReq.status == 200) {
           let price = JSON.parse(priceReq.response);
           priceSpan.innerHTML = price.price.toFixed(2);
+        } else {
+          priceSpan.innerHTML = "N/A";
         }
       };
       priceReq.open("GET", "/api/price");

@@ -11,6 +11,8 @@ const gm = require('gm');
 const emailChar = /^[0-9a-zA-Z!#$%&'\*+\-/=?^_`{|}~."(),:;<>@[\\\]]*$/;
 const atStruct = /^.+@.+$/;
 
+let loggedIn = {};
+
 function router(app, sql, mail, wind, consumption) {
   app.use(cors())
     .options('*', cors())
@@ -18,8 +20,6 @@ function router(app, sql, mail, wind, consumption) {
     .set('view engine', '.hbs')
     .use('/static', express.static('static'))
     .use(cookieParser());
-
-  app.use(bodyParser.json());
 
   const options = {
     uploadDir: os.tmpdir(),
@@ -30,7 +30,19 @@ function router(app, sql, mail, wind, consumption) {
   app.use(formData.stream());
   app.use(formData.union());
 
+  app.use(bodyParser.json());
+
   app.use('/prosumer', function (req, res, next) {
+    authenticate(req, res, sql, (isAuthenticated) => {
+      if (isAuthenticated) {
+        next();
+      } else {
+        res.redirect('/login');
+      }
+    });
+  });
+
+  app.use('/manager', function (req, res, next) {
     authenticate(req, res, sql, (isAuthenticated) => {
       if (isAuthenticated) {
         next();
@@ -50,14 +62,44 @@ function router(app, sql, mail, wind, consumption) {
     });
   })
 
+  app.use('/api/manager/*', (req, res, next) => {
+    isManager(
+      req,
+      sql,
+      () => next(),
+      () => res.sendStatus(403),
+    );
+  })
+
   app.get('/', function (req, res) {
-    res.redirect('/prosumer');
+    isManager(
+      req,
+      sql,
+      () => res.redirect('/manager'),
+      () => res.redirect('/prosumer'),
+    );
   });
 
   app.get('/prosumer', function (req, res) {
-    res.render('prosumer', {
-      layout: false,
-    });
+    isManager(
+      req,
+      sql,
+      () => res.redirect('/manager'),
+      () => res.render('prosumer', {
+        layout: false,
+      }),
+    );
+  });
+
+  app.get('/manager', function (req, res) {
+    isManager(
+      req,
+      sql,
+      () => res.render('manager', {
+        layout: false,
+      }),
+      () => res.redirect('/prosumer'),
+    );
   });
 
   app.get('/login', function (req, res) {
@@ -82,15 +124,144 @@ function router(app, sql, mail, wind, consumption) {
     });
   });
 
+  app.get('/api/manager/coal', (req, res) => {
+    sql.selectCoal((err, sqlres) => {
+      if (err || !sqlres.rowCount) {
+        res.sendStatus(500);
+        return;
+      }
+
+      res.send(sqlres.rows[0]);
+    });
+  });
+
+  app.post('/api/manager/settings', (req, res) => {
+    let token = req.cookies.token;
+
+    sql.setCoalSettings(token, req.body, (err, sqlres) => {
+      if (err || !sqlres.rowCount) {
+        res.sendStatus(500);
+        return;
+      }
+
+      res.send(sqlres.rows[0]);
+    });
+  });
+
+  app.get('/api/manager/users', (req, res) => {
+    sql.selectAccount((err, sqlres) => {
+      if (err) {
+        res.sendStatus(500);
+        return;
+      }
+
+      res.send(sqlres.rows);
+    }, req.query.email);
+  });
+
+  app.get('/api/manager/price', (req, res) => {
+    let price =
+      1.3 + 0.1 * (consumption.get() / consumption.typ) / (wind.avg() / wind.typ);
+    res.send({ price });
+  });
+
+  app.post('/api/manager/price/:price', (req, res) => {
+    let token = req.cookies.token;
+    let price = parseFloat(req.params.price);
+
+    sql.setPrice(token, price, (err, sqlres) => {
+      if (err || !sqlres.rowCount) {
+        res.sendStatus(500);
+        return;
+      }
+
+      res.send(sqlres.rows[0]);
+    });
+  });
+
+  app.post('/api/manager/block/:id/:seconds', (req, res) => {
+    let id = req.params.id;
+    let seconds = parseInt(req.params.seconds, 10);
+
+    sql.blockAccount(id, seconds, (err, sqlres) => {
+      if (err || !sqlres.rowCount) {
+        res.sendStatus(500);
+        return;
+      }
+
+      res.send(sqlres.rows[0]);
+    });
+  });
+
+  app.get('/api/manager/active', (req, res) => {
+    res.send(Object.keys(loggedIn));
+  });
+
+  app.get('/api/manager/runas', (req, res) => {
+    let receiver = req.query.email;
+    if (!receiver || !receiver.match(atStruct) || !receiver.match(emailChar)) {
+      res.sendStatus(400);
+      return;
+    }
+
+    sql.selectAccount((err, sqlres) => {
+      if (err || !sqlres.rowCount) {
+        res.sendStatus(403);
+        return;
+      }
+
+      sql.createAccountSession(receiver, (err, sqlres) => {
+        if (err || !sqlres.rowCount) {
+          res.sendStatus(500);
+          return;
+        }
+        res.cookie('token', sqlres.rows[0].session, {
+          maxAge: 10 * 365 * 24 * 60 * 60 * 1000,
+          httpOnly: true,
+        })
+        res.sendStatus(200);
+    });
+    }, receiver);
+  });
+
+  app.get('/api/manager/demand', (req, res) => {
+    sql.getDemand((err, sqlres) => {
+      if (err || !sqlres.rowCount) {
+        res.sendStatus(500);
+        return;
+      }
+
+      res.send(sqlres.rows[0]);
+    });
+  });
+
+  app.post('/api/manager/account/properties', (req, res) => {
+    sql.updateAccountProperties(req.body, (err, sqlres) => {
+      if (err || !sqlres.rowCount) {
+        res.sendStatus(500);
+        return;
+      }
+
+      res.send(sqlres.rows[0]);
+    });
+  });
+
   app.get('/api/account', (req, res) => {
     let token = req.cookies.token;
 
     sql.getAccount(token, (err, sqlres) => {
       if (err || !sqlres.rowCount) {
-        console.log(err, sqlres)
         res.sendStatus(500);
         return;
       }
+
+      let email = sqlres.rows[0].email;
+      let timeout = loggedIn[email];
+      if (timeout) {
+        clearTimeout(timeout)
+      }
+      timeout = setTimeout(() => delete loggedIn[email], 6000);
+      loggedIn[email] = timeout;
 
       res.send(sqlres.rows[0]);
     });
@@ -191,9 +362,14 @@ function router(app, sql, mail, wind, consumption) {
   });
 
   app.get('/api/price', (req, res) => {
-    let price =
-      1.3 + 0.1 * (consumption.get() / consumption.typ) / (wind.avg() / wind.typ);
-    res.send({ price });
+    sql.getPrice((err, sqlres) => {
+      if (err || !sqlres.rowCount) {
+        res.sendStatus(500);
+        return;
+      }
+
+      res.send(sqlres.rows[0]);
+    });
   });
 
   app.get('/auth/login', (req, res) => {
@@ -230,7 +406,7 @@ function router(app, sql, mail, wind, consumption) {
       return;
     }
 
-    let loginCode = parseInt(req.query.code, 10);
+    let loginCode = req.query.code;
     if (isNaN(loginCode)) {
       res.sendStatus(400);
       return;
@@ -324,6 +500,23 @@ function authenticate(req, res, sql, callback) {
     })
 
     callback(true);
+  });
+}
+
+function isManager(req, sql, is, not) {
+  let token = req.cookies.token;
+
+  if (token === undefined) {
+    not();
+    return;
+  }
+
+  sql.getAccount(token, (err, sqlres) => {
+    if (err || !sqlres.rowCount || !sqlres.rows[0].manager) {
+      not();
+    } else {
+      is();
+    }
   });
 }
 

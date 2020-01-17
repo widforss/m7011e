@@ -1,20 +1,21 @@
 module.exports = {
   port: 8008,
+  blackout: 0.25,
   sql: {
     connection: {
-      user: 'webdyn',
-      host: 'localhost',
-      database: 'webdyn',
-      password: 'webdyn',
-      port: 5432,
-      ssl: false,
+      user: replaceSqlUsername,
+      host: replaceSqlHostname,
+      database: replaceSqlDatabaseName,
+      password: replaceSqlPassword,
+      port: replaceSqlPortNumber,
+      ssl: replaceSqlSslBoolean,
     }
   },
   mail: {
-    sender: 'webdyn@fastmail.com',
-    username: 'webdyn@fastmail.com',
-    password: 'jw9xysaeac49w6zn',
-    url: 'smtps://smtp.fastmail.com:465',
+    sender: replaceSmtpSender,
+    username: replaceSmtpUsername,
+    password: replaceSmtpSender,
+    url: replaceSmtpUrl,
     length: 6,
     domains: [
       "student.ltu.se",

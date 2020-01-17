@@ -22,6 +22,8 @@ app.listen(settings.port, () => {
 
 dataCounter = 0;
 function refreshUserData() {
+  setTimeout(refreshUserData, 1000);
+
   sql.selectAccount((err, res) => {
     if (err) {
       console.error(err);
@@ -42,22 +44,56 @@ function refreshUserData() {
         account.buffer += netProd * account.frombuffer;
       }
 
+      account.blackout = Math.random() / settings.blackout <= 1;
+
       return {
         _id_public: account._id_public,
         consumption: account.consumption,
         production: account.production,
         buffer: account.buffer,
+        blackout: account.blackout,
       }
     });
 
     sql.updateAccountData(JSON.stringify(accounts), (err) => {
       dataCounter++;
-      setTimeout(refreshUserData, 1000);
       if (err) {
         console.error(err);
         return;
       }
     });
+  });
+
+  sql.selectCoal((err, res) => {
+    if (err) {
+      console.error(err);
+      return;
+    }
+
+    sql.getDemand((err, demand) => {
+      if (err || !demand.rowCount) {
+        console.error(err);
+        return;
+      }
+
+      let coal = {
+        status: res.rows[0].start,
+        production: res.rows[0].production,
+        buffer: res.rows[0].buffer,
+      };
+      if (res.rows[0].status == 'started') {
+        coal.buffer += coal.production * res.rows[0].tobuffer;
+      } else {
+        coal.buffer -= demand.rows[0].demand * res.rows[0].frombuffer;
+      }
+
+      sql.updateCoalData(JSON.stringify(coal), (err, res) => {
+        if (err) {
+          console.error(err);
+          return;
+        }
+      });
+    });    
   });
 }
 refreshUserData();

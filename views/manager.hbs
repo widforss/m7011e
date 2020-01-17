@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta name="viewport" content="initial-scale=1.0">
+  <meta charset="utf-8">
+  <title>Manager portal</title>
+</head>
+
+<body id="body">
+  <h1>Manager portal</h1>
+  <div><a href="/logout">Log out</a></div>
+  <div>
+    <p> 
+      Profile picture:<br>
+      <img id="avatarImg">
+      <form id="avatarForm">
+        <input type="file" name="avatar" accept="image/png, image/jpeg">
+      </form>
+    </p> 
+    <p>
+      Coal plant status:<br>
+      <span id="status-span"></span><br>
+      <input type="button" id="set-status-button">
+    <p>
+      Current coal plant production:<br>
+      <span id="prod-span"></span> kW <br>
+      Set desired production:<br>
+      <input type="number" id="produce" oninput="delaySettings();"> kW / 5000 kW<br>
+    </p>
+    <p>
+      Buffer:<br>
+      <span id="buffer-span"></span> kWh / 70,000 kWh
+    </p>
+    <p>
+      Produced electricity used to load buffer with running coal plant:<br>
+      <input type="number" id="toBuffer" value="1" oninput="delaySettings();"> %<br>
+      Consumed electricity taken from buffer with stopped coal plant:<br>
+      <input type="number" id="fromBuffer" value="0" oninput="delaySettings();"> %<br>
+    </p>
+    <p>
+      Current demand:<br>
+      <span id="net-span"></span> kW
+    </p>
+    <p>
+      Calculated price:<br>
+      <span id="price-span"></span> kr/kW
+    </p>
+    <p>
+      Set price: 
+      <input type="number" step="0.01" id="set_price" oninput="delayPrice();"> kW, 
+    </p>
+    <p>
+      Users: <br>
+      <div id="usersDiv"></div>
+    </p>
+  </div>
+  <noscript>
+    <div class="jsWarning">
+      This application requires a browser with JavaScript.
+    </div>
+</noscript>
+  <script type="text/javascript">
+    let account;
+    let users;
+    let active = [];
+    function getAccount(callback) {
+      let accountReq = new XMLHttpRequest();
+      accountReq.onload = () => {
+        if (accountReq.status == 200) {
+          account = JSON.parse(accountReq.response);
+          if (callback) {
+            callback();
+          }
+        }
+      }
+      accountReq.open("GET", "/api/account");
+      accountReq.send();
+    }
+
+    function getUsers(callback) {
+      let usersReq = new XMLHttpRequest();
+      usersReq.onload = () => {
+        if (usersReq.status == 200) {
+          users = JSON.parse(usersReq.response);
+          if (callback) {
+            callback();
+          }
+        }
+      }
+      usersReq.open("GET", "/api/manager/users");
+      usersReq.send();
+    }
+
+    function getActive(callback) {
+      let activeReq = new XMLHttpRequest();
+      activeReq.onload = () => {
+        if (activeReq.status == 200) {
+          active = JSON.parse(activeReq.response);
+        }
+        setTimeout(getActive, 10000);
+      }
+      activeReq.open("GET", "/api/manager/active");
+      activeReq.send();
+    }
+
+    function updateAvatar() {
+      let avatarImg = document.getElementById('avatarImg');
+
+      if(account.avatarurl) {
+        avatarImg.src = account.avatarurl;
+      }
+    }
+
+    function updateUsers(optional_id) {
+      let usersDiv = document.getElementById('usersDiv');
+      usersDiv.innerHTML = "";
+
+      users.forEach((user) => {
+        let br = document.createElement('br');
+        let emailInput = document.createElement('input');
+        let removeButton = document.createElement('input');
+        let loginButton = document.createElement('input');
+        let blockInput = document.createElement('input');
+        let blockButton = document.createElement('input');
+        let activeText = document.createElement('span');
+        let blockText = document.createElement('span');
+        let blackText = document.createElement('span');
+        emailInput.type = 'text';
+        emailInput.value = user.email;
+        removeButton.type = 'button';
+        removeButton.value = 'Remove'
+        blockInput.type = 'number';
+        blockInput.value = 10;
+        blockButton.type = 'button';
+        blockButton.value = 'Block from selling'
+        loginButton.type = 'button';
+        loginButton.value = 'Log in'
+
+        let actionTimeout;
+        let actionDelay = () => {
+          clearTimeout(actionTimeout);
+          settingsTimeout = setTimeout(action, 1500);
+        }
+        let action = () => {
+          user.email = emailInput.value;
+          update();
+        }
+        emailInput.oninput = () => {
+          actionDelay;
+        }
+        removeButton.onclick = () => {
+          user.active = false;
+          action();
+        }
+
+        loginButton.onclick = () => {
+          let loginReq = new XMLHttpRequest();
+          loginReq.onload = () => {
+            if (loginReq.status == 200) {
+              window.location.href = '/';
+            }
+          }
+          loginReq.open('GET', '/api/manager/runas?email=' + user.email);
+          loginReq.send();
+        }
+
+        let blockTimeout;
+        blockButton.onclick = () => {
+          let time = parseInt(blockInput.value, 10);
+          let blockReq = new XMLHttpRequest();
+          blockReq.onload = () => {
+            if (blockReq.status == 200) {
+              onBlock(time);
+            }
+          }
+          let url = ['/api/manager/block', user._id_public, time].join('/');
+          blockReq.open('POST', url);
+          blockReq.send();
+        }
+
+        usersDiv.appendChild(emailInput);
+        usersDiv.appendChild(removeButton);
+        usersDiv.appendChild(loginButton);
+        usersDiv.appendChild(blockInput);
+        usersDiv.appendChild(blockButton);
+        usersDiv.appendChild(activeText);
+        usersDiv.appendChild(blockText);
+        usersDiv.appendChild(blackText);
+        usersDiv.appendChild(br);
+
+        function update() {
+          let emailReq = new XMLHttpRequest();
+          emailReq.onload = () => getUsers(() => {
+            updateUsers();
+          });
+          emailReq.open('POST', '/api/manager/account/properties')
+          emailReq.setRequestHeader("Content-Type", "application/json");
+          emailReq.send(JSON.stringify({
+            _id_public: user._id_public,
+            email: user.email,
+            active: user.active,
+          }));
+        }
+
+        function updateActive() {
+          if (active.includes(user.email)) {
+            activeText.innerText = "\tLogged in";
+          } else {
+            activeText.innerText = "\t";
+          }
+          setTimeout(updateActive, 7000)
+        }
+        updateActive();
+
+        function updateBlackout() {
+          let blackReq = new XMLHttpRequest();
+          blackReq.onload = () => {
+            if (blackReq.status == 200) {
+              let newUser = JSON.parse(blackReq.response)[0];
+              if (newUser.blackout) {
+                blackText.innerText = "\tBlackout";
+              } else {
+                blackText.innerText = "\t";
+              }
+            }
+          };
+          blackReq.open('GET', '/api/manager/users?email=' + user.email);
+          blackReq.send();
+          setTimeout(updateBlackout, 5000);
+        }
+        updateBlackout();
+
+        function onBlock(time) {
+          clearTimeout(blockTimeout);
+          blockText.innerText = "\tBlocked"
+          usersDiv.removeChild(blockInput);
+          usersDiv.removeChild(blockButton);
+          setTimeout(() => {
+            blockText.innerText = "\t";
+            usersDiv.insertBefore(blockInput, activeText);
+            usersDiv.insertBefore(blockButton, activeText);
+          }, time * 1000);
+        }
+        onBlock(parseInt(user.blocked, 10));
+      });
+    }
+
+    let avatarForm = document.getElementById('avatarForm');
+    avatarForm.onchange = () => {
+      var formData = new FormData(avatarForm);
+      
+      var request = new XMLHttpRequest();
+      request.onload = () => getAccount(() => {
+        updateAvatar();
+      });
+      request.open("POST", "/api/avatar");
+      request.send(formData);
+    };
+
+    function updateDemand() {
+      let demSpan = document.getElementById('net-span');
+
+      let demReq = new XMLHttpRequest();
+      demReq.onload = () => {
+        if (demReq.status == 200) {
+          let demand = JSON.parse(demReq.response);
+          demSpan.innerHTML = demand.demand ? demand.demand.toFixed(1) : 0;
+        }
+      };
+      demReq.open("GET", "/api/manager/demand");
+      demReq.send();
+      setTimeout(updateDemand, 10000);
+    }
+
+    function getCalcPrice() {
+      let priceSpan = document.getElementById('price-span');
+
+      let priceReq = new XMLHttpRequest();
+      priceReq.onload = () => {
+        if (priceReq.status == 200) {
+          let price = JSON.parse(priceReq.response);
+          priceSpan.innerHTML = price.price.toFixed(2);
+        }
+      };
+      priceReq.open("GET", "/api/manager/price");
+      priceReq.send();
+      setTimeout(getCalcPrice, 1000);
+    }
+
+    function getPrice() {
+      let priceInput = document.getElementById('set_price');
+
+      let priceReq = new XMLHttpRequest();
+      priceReq.onload = () => {
+        if (priceReq.status == 200) {
+          let price = JSON.parse(priceReq.response);
+          priceInput.value = price.price.toFixed(2);
+        } else {
+          priceInput.value = undefined;
+        }
+      };
+      priceReq.open("GET", "/api/price");
+      priceReq.send();
+    }
+
+    let priceTimeout;
+    function setPrice() {
+      let price = parseFloat(document.getElementById('set_price').value);
+      if (!isNaN(price)) {
+        let priceReq = new XMLHttpRequest();
+        priceReq.onload = getPrice;
+        priceReq.open("POST", "/api/manager/price/" + price);
+        priceReq.send();
+      } else {
+        getPrice();
+      }
+    }
+    function delayPrice() {
+      clearTimeout(priceTimeout);
+      priceTimeout = setTimeout(setPrice, 1000);
+    }
+
+    let start;
+    let coal;
+    function updateCoal() {
+      let prodSpan = document.getElementById('prod-span');
+      let statSpan = document.getElementById('status-span');
+      let setStatButton = document.getElementById('set-status-button');
+      let bufferSpan = document.getElementById('buffer-span');
+
+      let dataReq = new XMLHttpRequest();
+      dataReq.onload = () => {
+        if (dataReq.status == 200) {
+          let data = JSON.parse(dataReq.response);
+          coal = data;
+          prodSpan.innerHTML = data.production.toFixed(3);
+          statSpan.innerText = data.status;
+          bufferSpan.innerHTML = data.buffer.toFixed(3);
+
+          start = data.start;
+          if (data.status == 'stopped') {
+            setStatButton.value = "Start";
+          } else {
+            setStatButton.value = "Stop";
+          }
+
+          setStatButton.onclick = () => {
+            delaySettings(!start);
+          }
+        }
+      };
+      dataReq.open("GET", "/api/manager/coal");
+      dataReq.send();
+      setTimeout(updateCoal, 1000);
+    }
+
+    let coalSettingsTimeout;
+    function updateCoalSettings() {
+      let toBuffer = document.getElementById('toBuffer');
+      let fromBuffer = document.getElementById('fromBuffer');
+      let produce = document.getElementById('produce');
+      toBuffer.value = coal.tobuffer * 100;
+      fromBuffer.value = coal.frombuffer * 100;
+      produce.value = coal.produce;
+    }
+    function delayCoalSettings() {
+      clearTimeout(coalSettingsTimeout);
+      coalSettingsTimeout = setTimeout(updateCoalSettings, 1500);
+    }
+
+    let settingsTimeout;
+    function pushSettings(status) {
+      let fromBuffer = parseInt(document.getElementById('fromBuffer').value, 10);
+      let toBuffer = parseInt(document.getElementById('toBuffer').value, 10);
+      let produce = parseInt(document.getElementById('produce').value, 10);
+
+      if (status === true || status === false) {
+        start = status; status;
+      }
+
+      if (!isNaN(fromBuffer) && !isNaN(toBuffer)) {
+        let settings = {
+          start,
+          produce: produce,
+          fromBuffer: fromBuffer / 100,
+          toBuffer: toBuffer / 100,
+        };
+
+        let settingsReq = new XMLHttpRequest();
+        settingsReq.onload = delayCoalSettings();
+        settingsReq.open("POST", "/api/manager/settings");
+        settingsReq.setRequestHeader("Content-Type", "application/json");
+        settingsReq.send(JSON.stringify(settings));
+      } else {
+        delayCoalSettings();
+      }
+    }
+    function delaySettings(start) {
+      clearTimeout(settingsTimeout);
+      settingsTimeout = setTimeout(pushSettings, 1000, start);
+    }
+
+
+    getAccount(() => {
+      updateAvatar();
+    });
+    getUsers(() => {
+      updateUsers();
+    })
+    updateDemand();
+    updateCoal();
+    getActive();
+    getPrice();
+    getCalcPrice();
+    delayCoalSettings();
+  </script>
+</body>
+
+</html>

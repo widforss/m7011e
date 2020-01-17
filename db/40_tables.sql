@@ -10,12 +10,30 @@ CREATE TABLE account.Account
 );
 CREATE INDEX ON account.Account (logDate);
 
+CREATE TABLE account.Manager
+(
+    _id        UUID        NOT NULL DEFAULT uuid.uuid_generate_v4(),
+    _id_public UUID        NOT NULL DEFAULT uuid.uuid_generate_v4(),
+    _accountId UUID        NOT NULL,
+    manager    BOOL        NOT NULL,
+
+    logDate    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    PRIMARY KEY (_id),
+    FOREIGN KEY (_accountId) REFERENCES account.Account (_id),
+    UNIQUE (_id_public)
+);
+CREATE INDEX ON account.Manager (_accountId);
+CREATE INDEX ON account.Manager (manager);
+CREATE INDEX ON account.Manager (logDate);
+
 CREATE TABLE account.Properties
 (
     _id        UUID         NOT NULL DEFAULT uuid.uuid_generate_v4(),
     _id_public UUID         NOT NULL DEFAULT uuid.uuid_generate_v4(),
     _accountId UUID         NOT NULL,
     email      VARCHAR(255) NOT NULL,
+    blocked    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     active     BOOL         NOT NULL,
     gdpr       BOOL         NOT NULL,
 
@@ -23,7 +41,9 @@ CREATE TABLE account.Properties
 
     PRIMARY KEY (_id),
     FOREIGN KEY (_accountId) REFERENCES account.Account (_id),
-    UNIQUE (_id_public)
+    UNIQUE (_id_public),
+    CHECK (EXTRACT(EPOCH FROM blocked - NOW()) >= 10 OR blocked = NOW()),
+    CHECK (EXTRACT(EPOCH FROM blocked - NOW()) <= 100)
 );
 CREATE INDEX ON account.Properties (_accountId);
 CREATE INDEX ON account.Properties USING gin (email trigram.gin_trgm_ops);
@@ -70,16 +90,17 @@ CREATE TABLE account.Data
     consumption REAL        NOT NULL DEFAULT 0,
     production  REAL        NOT NULL DEFAULT 0,
     buffer      REAL        NOT NULL DEFAULT 0,
+    blackout    BOOL        NOT NULL DEFAULT FALSE,
 
     logDate     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 
     PRIMARY KEY (_id),
     FOREIGN KEY (_accountId) REFERENCES account.Account (_id),
     UNIQUE (_id_public),
+    UNIQUE (_accountId),
     CHECK (consumption >= 0 AND production >= 0),
     CHECK (0 <= buffer AND buffer <= 70)
 );
-CREATE INDEX ON account.Properties (_accountId);
 CREATE INDEX ON account.Properties (logDate);
 
 CREATE TABLE account.Avatar
@@ -177,3 +198,58 @@ CREATE TABLE account.CodeCheck
 CREATE INDEX ON account.CodeCheck (logDate);
 CREATE INDEX ON account.CodeCheck (code);
 CREATE INDEX ON account.CodeCheck USING gin (email trigram.gin_trgm_ops);
+
+CREATE TABLE price.Price
+(
+    _id        UUID        NOT NULL DEFAULT uuid.uuid_generate_v4(),
+    _id_public UUID        NOT NULL DEFAULT uuid.uuid_generate_v4(),
+    price      REAL        NOT NULL,
+    byUser     UUID,
+
+    logDate    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    PRIMARY KEY (_id),
+    UNIQUE (_id_public)
+);
+CREATE INDEX ON price.Price (logDate);
+INSERT INTO price.Price (price)
+VALUES (1.5);
+
+CREATE TABLE coal.Settings
+(
+    _id        UUID        NOT NULL DEFAULT uuid.uuid_generate_v4(),
+    _id_public UUID        NOT NULL DEFAULT uuid.uuid_generate_v4(),
+    start      BOOL        NOT NULL DEFAULT FALSE,
+    produce    REAL        NOT NULL DEFAULT 5000,
+    toBuffer   REAL        NOT NULL DEFAULT 1,
+    fromBuffer REAL        NOT NULL DEFAULT 0,
+    byUser     UUID,
+
+    logDate    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    PRIMARY KEY (_id),
+    UNIQUE (_id_public),
+    CHECK (0 <= produce AND produce <= 5000),
+    CHECK (0 <= toBuffer AND toBuffer <= 1),
+    CHECK (0 <= fromBuffer AND fromBuffer <= 1)
+);
+CREATE INDEX ON coal.Settings (byUser);
+CREATE INDEX ON coal.Settings (logDate);
+INSERT INTO coal.Settings DEFAULT
+VALUES;
+
+CREATE TABLE coal.Data
+(
+    singleton  BOOL        NOT NULL DEFAULT TRUE,
+    status     TIMESTAMPTZ,
+    buffer     REAL        NOT NULL DEFAULT 0,
+
+    logDate    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    PRIMARY KEY (singleton),
+    CHECK (singleton),
+    CHECK (0 <= buffer AND buffer <= 70000)
+);
+CREATE INDEX ON coal.Data (logDate);
+INSERT INTO coal.Data DEFAULT
+VALUES;
