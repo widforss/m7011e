@@ -587,12 +587,14 @@ DECLARE
     status_      TIMESTAMPTZ;
     production_  REAL;
     buffer_      REAL;
+    normalDemand_      REAL;
     coal_        interface.Coal%ROWTYPE;
 BEGIN
     SELECT data -> 'production' AS production,
            data -> 'buffer'     AS buffer,
-           data -> 'status'     AS status_bool
-    INTO production_, buffer_, status_bool_;
+           data -> 'status'     AS status_bool,
+           data -> 'normalDemand'     AS normalDemand
+    INTO production_, buffer_, status_bool_, normalDemand_;
 
     IF buffer_ > 70000 THEN
         SELECT 70000 INTO buffer_;
@@ -613,8 +615,8 @@ BEGIN
     INTO status_;
 
     UPDATE Coal.Data
-    SET (buffer, status, logdate)
-            = (buffer_, status_, NOW())
+    SET (buffer, status, production, normalDemand, logdate)
+            = (buffer_, status_, production, normalDemand_, NOW())
     WHERE singleton = TRUE;
     RETURN;
 END

@@ -251,6 +251,7 @@ function router(app, sql, mail, wind, consumption) {
 
     sql.getAccount(token, (err, sqlres) => {
       if (err || !sqlres.rowCount) {
+        console.log(err, sqlres)
         res.sendStatus(500);
         return;
       }

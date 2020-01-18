@@ -17,6 +17,11 @@ SELECT DISTINCT ON
                   Data.consumption,
                   Data.production,
                   Data.buffer,
+                  CASE WHEN Data.buffer >= 70 AND production > consumption THEN 0
+                      WHEN Data.buffer <= 0 AND production < consumption THEN 0
+                      WHEN production > consumption THEN (production - consumption) * tobuffer
+                      WHEN production < consumption THEN (production - consumption) * fromBuffer
+                      ELSE 0 END AS bufferUse,
                   Data.blackout,
                   Data.logDate                             AS dataDate,
                   Settings.toBuffer,
@@ -90,7 +95,9 @@ SELECT Settings.start,
        Settings.toBuffer,
        Settings.fromBuffer,
        Data.status,
-       Data.buffer
+       Data.buffer,
+       Data.production,
+       Data.normalDemand
 FROM coal.Settings
          LEFT JOIN coal.Data ON TRUE
 ORDER BY Settings.logDate DESC,

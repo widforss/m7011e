@@ -44,14 +44,12 @@ function refreshUserData() {
         account.buffer += netProd * account.frombuffer;
       }
 
-      account.blackout = Math.random() / settings.blackout <= 1;
-
       return {
         _id_public: account._id_public,
         consumption: account.consumption,
         production: account.production,
         buffer: account.buffer,
-        blackout: account.blackout,
+        blackout: false, // Not used.
       }
     });
 
@@ -80,6 +78,7 @@ function refreshUserData() {
         status: res.rows[0].start,
         production: res.rows[0].production,
         buffer: res.rows[0].buffer,
+        normalDemand: consumption.get_local() * 100,
       };
       if (res.rows[0].status == 'started') {
         coal.buffer += coal.production * res.rows[0].tobuffer;

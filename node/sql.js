@@ -107,10 +107,11 @@ class Sql {
   
   getDemand(callback) {
     let query = `SELECT
-        CASE WHEN SUM(consumption) > SUM(production) + SUM(fromBuffer)
-        THEN SUM(consumption) - SUM(production) - SUM(fromBuffer)
-        ELSE 0 END AS demand
+        CASE WHEN SUM(consumption - account.production + account.bufferUse) > 0
+        THEN SUM(consumption - account.production + account.bufferUse) + MIN(coal.normalDemand)
+        ELSE MIN(coal.normalDemand) END AS demand
         FROM account
+        JOIN coal ON TRUE
         WHERE NOT manager;`;
     this.query_(query, [], callback);
   }
