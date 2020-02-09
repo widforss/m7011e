@@ -114,6 +114,18 @@ function router(app, sql, mail, wind, consumption) {
     });
   });
 
+  app.get('/auth', function (req, res) {
+    authenticate(req, res, sql, (isAuthenticated) => {
+      if (isAuthenticated) {
+        res.redirect('/');
+      } else {
+        res.render('auth', {
+          layout: false,
+        });
+      }
+    });
+  });
+
   app.get('/logout', function (req, res) {
     revoke(req, res, sql, (code) => {
       if (code == 200) {
@@ -461,6 +473,7 @@ function router(app, sql, mail, wind, consumption) {
 
 function revoke(req, res, sql, callback) {
   let token = req.cookies.token;
+  res.cookie('token', "", {expire: new Date(1)});
   if (!token) {
     callback(400)
     return;
@@ -476,7 +489,6 @@ function revoke(req, res, sql, callback) {
       return;
     }
 
-    res.cookie('token', token, {expire: new Date(1)});
     callback(200)
   });
 }
@@ -497,7 +509,7 @@ function authenticate(req, res, sql, callback) {
 
     res.cookie('token', token, {
       maxAge: 10 * 365 * 24 * 60 * 60 * 1000,
-      httpOnly: true,
+      httpOnly: false,
     })
 
     callback(true);

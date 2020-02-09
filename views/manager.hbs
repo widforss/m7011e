@@ -61,6 +61,10 @@
     </div>
 </noscript>
   <script type="text/javascript">
+    if (!getCookie('token')) {
+      document.location.href = '/login';
+    }
+
     let account;
     let users;
     let active = [];
@@ -414,6 +418,24 @@
     getPrice();
     getCalcPrice();
     delayCoalSettings();
+
+    function getCookie(cname) {
+      var name = cname + "=";
+      var decodedCookie = decodeURIComponent(document.cookie);
+      var ca = decodedCookie.split(';');
+      console.log(document.cookie)
+      for(var i = 0; i <ca.length; i++) {
+          var c = ca[i];
+          while (c.charAt(0) == ' ') {
+              c = c.substring(1);
+          }
+          if (c.indexOf(name) == 0) {
+              return c.substring(name.length, c.length);
+          }
+      }
+      return "";
+    }
+  </script>
   </script>
 </body>
 
