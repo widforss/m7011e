@@ -325,6 +325,7 @@ AS
 $$
 DECLARE
     account_ interface.account%ROWTYPE;
+    blocked_ TIMESTAMPTZ;
 BEGIN
     SELECT *
     INTO account_
@@ -336,8 +337,10 @@ BEGIN
         RAISE EXCEPTION 'Invalid account ID!';
     END IF;
 
+    SELECT NOW() + account_.blocked * INTERVAL '1 second' INTO blocked_;
+
     INSERT INTO Account.Properties (_accountid, email, active, gdpr, blocked)
-    VALUES (account_._id, email, active, account_.active, account_.blocked);
+    VALUES (account_._id, email, active, account_.active, blocked_);
 
     RETURN QUERY
         SELECT *

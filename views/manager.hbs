@@ -218,7 +218,7 @@
           blackReq.onload = () => {
             if (blackReq.status == 200) {
               let newUser = JSON.parse(blackReq.response)[0];
-              if (newUser.blackout) {
+              if (newUser && newUser.blackout) {
                 blackText.innerText = "\tBlackout";
               } else {
                 blackText.innerText = "\t";
